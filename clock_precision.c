@@ -9,9 +9,9 @@
 #include <math.h>
 #include "hwtimer.h"
 
-#define MAX_RUNS 10
+#define MAX_RUNS  10
+#define NS_IN_SEC 1000000000
 
-#if defined(__linux) || defined(__linux__) || defined(linux)
 void set_affinity(int cpuid) {
     cpu_set_t set;
     CPU_ZERO(&set);
@@ -21,11 +21,6 @@ void set_affinity(int cpuid) {
         perror("sched_affinity");
 
 }
-#else
-void set_affinity(int cpuid) {
-    return;
-}
-#endif
 
 uint64_t mean(uint64_t *v, int size) {
     int i = 0;
@@ -75,15 +70,17 @@ int main()
         sleep(1);
         stop_timer(&tsct);
         timetsc[i] = get_timer_ns(&tsct);
-        if (timetsc[i] < 1000000000)
-            timetsc[i] = 1000000000 - timetsc[i];
+        // Assuming sleep of 1 sec is accurate
+        if (timetsc[i] < NS_IN_SEC)
+            timetsc[i] = NS_IN_SEC - timetsc[i];
         else
-            timetsc[i] -= 1000000000;
+            timetsc[i] -= NS_IN_SEC;
     }
 
     meanval = mean(timetsc, MAX_RUNS);
     sdval = stdev(timetsc, MAX_RUNS);
-    printf("Raw Error: mean %lu stdev %f\n", meanval, sdval);
+    printf("Raw Error: mean %lu stdev %f percent error %f\n",
+        meanval, sdval, ((double)meanval / NS_IN_SEC) * 100);
 
     return 0;
 }
