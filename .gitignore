@@ -27,7 +27,15 @@
 *.i*86
 *.x86_64
 *.hex
+clk_precision
 
 # Debug files
 *.dSYM/
 *.su
+
+# Ctags/Cscope
+tags
+cscope.in.out
+cscope.files
+cscope.out
+cscope.po.out
