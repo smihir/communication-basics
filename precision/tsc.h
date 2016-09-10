@@ -10,14 +10,14 @@
     ticks = (uint64_t)hi << 32 | lo; \
 } while(0)
 
-static double tsc_frequency(CPUID)
+static double tsc_frequency(int cpuid)
 {
     FILE* cpuinfo;
     char str[100];
     double cpu_khz = 0;
     char fname[100];
     snprintf(fname, sizeof(fname), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq",
-        CPUID);
+        cpuid);
 
     cpuinfo = fopen(fname,"r");
     while(fgets(str,sizeof(str),cpuinfo) != NULL){

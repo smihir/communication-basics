@@ -24,7 +24,7 @@ void set_affinity(int cpuid) {
 
 uint64_t timediff(uint64_t ticks1, uint64_t ticks2) {
     uint64_t tickdiff = ticks2 - ticks1;
-    double tscfreq = tsc_frequency();
+    double tscfreq = tsc_frequency(CPUID);
 
     return (uint64_t)(((double)tickdiff / tscfreq) * 1000);
 }
