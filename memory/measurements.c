@@ -189,11 +189,6 @@ int i386_cpuid_caches (struct cache_info *info, size_t info_size) {
 }
 
 int test_l1_cache(size_t attempts, size_t cache_size, int * latencies, size_t max_latency) {
-    int fd = open("/dev/urandom", O_RDONLY);
-    if (fd < 0) {
-        perror("open");
-        abort();
-    }
     char * random_data = mmap(
           NULL
         , cache_size
@@ -207,19 +202,19 @@ int test_l1_cache(size_t attempts, size_t cache_size, int * latencies, size_t ma
         abort();
     }
 
+    sleep(1);
+
+    // bring in L1
     size_t i;
-    for (i = 0; i < cache_size; i += sysconf(_SC_PAGESIZE)) {
+    for (i = 0; i < cache_size; i += 1) {
         random_data[i] = 1;
     }
 
-
     int64_t random_offset = 0;
+    random_offset += rand();
+    random_offset %= cache_size;
+    char *loc = random_data + random_offset;
     while (attempts--) {
-        // use processor clock timer for exact measurement
-        random_offset += rand();
-        random_offset %= cache_size;
-        char touch = random_data[random_offset];
-        char *loc = random_data + random_offset;
         int32_t temp1, temp2;
         uint64_t cycles_used, edx, eax;
         asm (
@@ -244,8 +239,6 @@ int test_l1_cache(size_t attempts, size_t cache_size, int * latencies, size_t ma
             latencies[cycles_used]++;
         else 
             latencies[max_latency - 1]++;
-        //to prevent warnings
-        random_data[random_offset] = touch;
     }
 
     munmap(random_data, cache_size);
@@ -254,6 +247,65 @@ int test_l1_cache(size_t attempts, size_t cache_size, int * latencies, size_t ma
     return 0;
 } 
 
+int test_l2l3_cache(size_t attempts, size_t cache_size, int * latencies, size_t max_latency) {
+    char * random_data = mmap(
+          NULL
+        , cache_size
+        , PROT_READ | PROT_WRITE
+        , MAP_PRIVATE | MAP_ANON // | MAP_POPULATE
+        , -1
+        , 0
+        ); // get some random data
+    if (random_data == MAP_FAILED) {
+        perror("mmap");
+        abort();
+    }
+
+    sleep(1);
+
+    size_t i;
+    // all data is in l2 now
+    // last l1_cache_size bytes of data are in l1
+    // first byte is in l2
+    for (i = 0; i < cache_size; i += 1) {
+        random_data[i] = 1;
+    }
+
+    while (attempts--) {
+        // attempts is so small as compared to cache sizes that we are
+        // reading from l2l3
+        char *loc = random_data + attempts;
+        int32_t temp1, temp2;
+        uint64_t cycles_used, edx, eax;
+        asm (
+            "mfence\n\t"        // memory fence
+            "rdtsc\n\t"         // get cpu cycle count
+            "mov %%edx, %2\n\t"
+            "mov %%eax, %3\n\t"
+            "mfence\n\t"        // memory fence
+            "mov %4, %%al\n\t"  // load data
+            "mfence\n\t"
+            "rdtsc\n\t"
+            "sub %3, %%eax\n\t" // substract cycle count
+            "sbb %2, %%edx"     // substract cycle count
+            : "=a" (eax)
+            , "=d" (edx)
+            , "=r" (temp1)
+            , "=r" (temp2)
+            : "m" (loc)
+            );
+        cycles_used = edx << 32 | eax;
+        if (cycles_used < max_latency)
+            latencies[cycles_used]++;
+        else 
+            latencies[max_latency - 1]++;
+    }
+
+    munmap(random_data, cache_size);
+
+
+    return 0;
+} 
 int main() {
     struct cache_info info[32];
     int num_caches = i386_cpuid_caches(info, sizeof(info));
@@ -264,7 +316,9 @@ int main() {
     int empty_cycles = 0;
 
     int i;
-    int attempts = 1000000;
+    // has to be a lot less than difference in subsequent
+    // cache sizes otherwise measurement will not work
+    int attempts = 10000;
     set_affinity(0);
     for (i = 0; i < attempts; i++) { // measure how much overhead we have for counting cyscles
         int32_t temp1, temp2;
@@ -313,10 +367,11 @@ int main() {
     for (i = 0; i < num_caches; i++) {
         if (info[i].cache_type == 1 || info[i].cache_type == 3) {
             memset(latencies, 0, sizeof(latencies));
-            if (info[i].cache_level == 1)
+            if (info[i].cache_level == 1) {
                 test_l1_cache(attempts, info[i].cache_total_size, latencies, sizeof(latencies) / sizeof(*latencies));
-            else
-                continue;
+            } else {
+                test_l2l3_cache(attempts, info[i].cache_total_size, latencies, sizeof(latencies) / sizeof(*latencies));
+           }
         } else {
             continue;
         }
