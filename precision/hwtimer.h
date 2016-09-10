@@ -8,7 +8,7 @@
 
 typedef uint64_t hrtime_t;
 
-__inline__ hrtime_t _rdtsc() {
+inline hrtime_t _rdtsc() {
     unsigned long int lo, hi;
     __asm__ __volatile__ ("rdtscp" : "=a" (lo), "=d" (hi));
     return (hrtime_t)hi << 32 | lo;
@@ -31,6 +31,7 @@ inline void init_timer(hwtimer_t* timer)
 #if defined(__linux) || defined(__linux__) || defined(linux)
     FILE* cpuinfo;
     char str[100];
+    timer->cpuMHz = 0;
     cpuinfo = fopen("/proc/cpuinfo","r");
     while(fgets(str,100,cpuinfo) != NULL){
         char cmp_str[8];
