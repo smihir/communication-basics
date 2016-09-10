@@ -1,7 +1,7 @@
 CC = gcc
 CSCOPE = cscope
-CFLAGS += -Wall -Werror -Winline -O0
-LDFLAGS += -lm -static
+CFLAGS += -Wall -Werror -Winline -O3
+LDFLAGS += -lm
 
 CLKPRECISIONOBJS := clock_gettime_precision.o
 TSCPRECISIONOBJS := tsc_precision.o

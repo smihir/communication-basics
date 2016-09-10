@@ -4,29 +4,27 @@
 #include <stdint.h>
 #include <string.h>
 
-inline uint64_t _rdtsc() {
-    unsigned long int lo, hi;
-    __asm__ __volatile__ ("rdtscp" : "=a" (lo), "=d" (hi));
-    return (uint64_t)hi << 32 | lo;
-}
+#define _rdtsc(ticks) do { \
+    volatile unsigned long int lo, hi; \
+    __asm__ __volatile__ ("rdtscp" : "=a" (lo), "=d" (hi)); \
+    ticks = (uint64_t)hi << 32 | lo; \
+} while(0)
 
-static double tsc_frequency()
+static double tsc_frequency(CPUID)
 {
     FILE* cpuinfo;
-    char str[1000];
-    double cpu_mhz = 0;
+    char str[100];
+    double cpu_khz = 0;
+    char fname[100];
+    snprintf(fname, sizeof(fname), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq",
+        CPUID);
 
-    cpuinfo = fopen("/proc/cpuinfo","r");
-    while(fgets(str,1000,cpuinfo) != NULL){
-        char cmp_str[8];
-        strncpy(cmp_str, str, 7);
-        cmp_str[7] = '\0';
-        if (strcmp(cmp_str, "cpu MHz") == 0) {
-            sscanf(str, "cpu MHz : %lf", &cpu_mhz);
-            break;
-        }
+    cpuinfo = fopen(fname,"r");
+    while(fgets(str,sizeof(str),cpuinfo) != NULL){
+        sscanf(str, "%lf", &cpu_khz);
+        break;
     }
     fclose(cpuinfo);
-    return cpu_mhz;
+    return cpu_khz / 1000;
 }
 #endif

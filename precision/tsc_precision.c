@@ -9,6 +9,7 @@
 
 #include "tsc.h"
 
+#define CPUID 0
 #define MAX_RUNS  10
 #define NS_IN_SEC 1000000000UL
 
@@ -54,13 +55,13 @@ int main()
     double sdval;
     int i;
 
-    set_affinity(0);
+    set_affinity(CPUID);
 
     for (i = 0; i < MAX_RUNS; i++) {
         uint64_t ticks1, ticks2;
         sleep(1);
-        ticks1 = _rdtsc();
-        ticks2 = _rdtsc();
+        _rdtsc(ticks1);
+        _rdtsc(ticks2);
         timetsc[i] = timediff(ticks1, ticks2);
     }
 
@@ -71,9 +72,9 @@ int main()
     //calculating accuracy
     for (i = 0; i < MAX_RUNS; i++) {
         uint64_t ticks1, ticks2;
-        ticks1 = _rdtsc();
+        _rdtsc(ticks1);
         sleep(1);
-        ticks2 = _rdtsc();
+        _rdtsc(ticks2);
         timetsc[i] = timediff(ticks1, ticks2);
         // Assuming sleep of 1 sec is accurate
         if (timetsc[i] < NS_IN_SEC)
