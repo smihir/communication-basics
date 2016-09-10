@@ -1,6 +1,6 @@
 CC = gcc
 CSCOPE = cscope
-CFLAGS += -Wall -Werror
+CFLAGS += -Wall -Werror -O0 -Winline
 LDFLAGS += -lrt -lm
 
 CLKPRECISIONOBJS := clock_precision.o
