@@ -28,6 +28,7 @@
 *.x86_64
 *.hex
 clk_precision
+tsc_precision
 
 # Debug files
 *.dSYM/

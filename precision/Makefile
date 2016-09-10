@@ -1,23 +1,23 @@
 CC = gcc
 CSCOPE = cscope
-CFLAGS += -Wall -Werror -Winline -O3
+CFLAGS += -Wall -Werror -Winline -O0
 LDFLAGS += -lm -static
 
-CLKPRECISIONOBJS := clock_precision.o
+CLKPRECISIONOBJS := clock_gettime_precision.o
+TSCPRECISIONOBJS := tsc_precision.o
 
 ifeq ($(DEBUG), y)
  CFLAGS += -g -DDEBUG
 endif
 
-ifeq ($(TSCTIMER), y)
- TIMERFLAGS += -DTSCTIMER
-endif
-
 .PHONY: all
-all: clk_precision
+all: clk_precision tsc_precision
 
 clk_precision: $(CLKPRECISIONOBJS)
 	$(CC) $(CFLAGS) $(CLKPRECISIONOBJS) -o $@ $(LDFLAGS)
+
+tsc_precision: $(TSCPRECISIONOBJS)
+	$(CC) $(CFLAGS) $(TSCPRECISIONOBJS) -o $@ $(LDFLAGS)
 
 %.o: %.c *.h
 	$(CC) $(CFLAGS) $(TIMERFLAGS) -o $@ -c $<
@@ -27,4 +27,4 @@ cscope:
 
 .PHONY: clean
 clean:
-	rm -rf *.o clk_precision
+	rm -rf *.o clk_precision tsc_precision

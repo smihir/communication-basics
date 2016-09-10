@@ -1,16 +1,16 @@
 #define _GNU_SOURCE
-#undef TSCPRECISION
+#include <math.h>
+#include <sched.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 #include <unistd.h>
-#include <sched.h>
-#include <math.h>
-#include "hwtimer.h"
+
+#include "tsc.h"
 
 #define MAX_RUNS  10
-#define NS_IN_SEC 1000000000
+#define NS_IN_SEC 1000000000UL
 
 void set_affinity(int cpuid) {
     cpu_set_t set;
@@ -19,7 +19,13 @@ void set_affinity(int cpuid) {
 
     if (sched_setaffinity(getpid(), sizeof(set), &set) == -1)
         perror("sched_affinity");
+}
 
+uint64_t timediff(uint64_t ticks1, uint64_t ticks2) {
+    uint64_t tickdiff = ticks2 - ticks1;
+    double tscfreq = tsc_frequency();
+
+    return (uint64_t)(((double)tickdiff / tscfreq) * 1000);
 }
 
 uint64_t mean(uint64_t *v, int size) {
@@ -44,7 +50,6 @@ double stdev(uint64_t *v, int size) {
 
 int main()
 {
-    hwtimer_t tsct;
     uint64_t timetsc[MAX_RUNS], meanval;
     double sdval;
     int i;
@@ -52,11 +57,11 @@ int main()
     set_affinity(0);
 
     for (i = 0; i < MAX_RUNS; i++) {
-        init_timer(&tsct);
+        uint64_t ticks1, ticks2;
         sleep(1);
-        start_timer(&tsct);
-        stop_timer(&tsct);
-        timetsc[i] = get_timer_ns(&tsct);
+        ticks1 = _rdtsc();
+        ticks2 = _rdtsc();
+        timetsc[i] = timediff(ticks1, ticks2);
     }
 
     meanval = mean(timetsc, MAX_RUNS);
@@ -65,11 +70,11 @@ int main()
 
     //calculating accuracy
     for (i = 0; i < MAX_RUNS; i++) {
-        init_timer(&tsct);
-        start_timer(&tsct);
+        uint64_t ticks1, ticks2;
+        ticks1 = _rdtsc();
         sleep(1);
-        stop_timer(&tsct);
-        timetsc[i] = get_timer_ns(&tsct);
+        ticks2 = _rdtsc();
+        timetsc[i] = timediff(ticks1, ticks2);
         // Assuming sleep of 1 sec is accurate
         if (timetsc[i] < NS_IN_SEC)
             timetsc[i] = NS_IN_SEC - timetsc[i];
