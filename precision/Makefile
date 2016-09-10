@@ -5,10 +5,6 @@ LDFLAGS += -lrt
 
 UNAME_S := $(shell uname -s)
 
-ifeq ($(UNAME_S),Darwin)
-	$(error Only Linux supported, detected OS is $(OS))
-endif
-
 CLKPRECISIONOBJS := clock_precision.o
 
 ifeq ($(DEBUG), y)
