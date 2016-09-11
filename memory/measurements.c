@@ -188,7 +188,7 @@ int i386_cpuid_caches (struct cache_info *info, size_t info_size) {
     return num_caches;
 }
 
-int test_cache(size_t attempts, size_t lower_cache_size, int * latencies, size_t max_latency) {
+int test_l1_cache(size_t attempts, size_t cache_size, int * latencies, size_t max_latency) {
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd < 0) {
         perror("open");
@@ -196,7 +196,7 @@ int test_cache(size_t attempts, size_t lower_cache_size, int * latencies, size_t
     }
     char * random_data = mmap(
           NULL
-        , lower_cache_size
+        , cache_size
         , PROT_READ | PROT_WRITE
         , MAP_PRIVATE | MAP_ANON // | MAP_POPULATE
         , -1
@@ -208,7 +208,7 @@ int test_cache(size_t attempts, size_t lower_cache_size, int * latencies, size_t
     }
 
     size_t i;
-    for (i = 0; i < lower_cache_size; i += sysconf(_SC_PAGESIZE)) {
+    for (i = 0; i < cache_size; i += sysconf(_SC_PAGESIZE)) {
         random_data[i] = 1;
     }
 
@@ -217,7 +217,8 @@ int test_cache(size_t attempts, size_t lower_cache_size, int * latencies, size_t
     while (attempts--) {
         // use processor clock timer for exact measurement
         random_offset += rand();
-        random_offset %= lower_cache_size;
+        random_offset %= cache_size;
+        char touch = random_data[random_offset];
         char *loc = random_data + random_offset;
         int32_t temp1, temp2;
         uint64_t cycles_used, edx, eax;
@@ -243,9 +244,12 @@ int test_cache(size_t attempts, size_t lower_cache_size, int * latencies, size_t
             latencies[cycles_used]++;
         else 
             latencies[max_latency - 1]++;
+        //to prevent warnings
+        random_data[random_offset] = touch;
     }
 
-    munmap(random_data, lower_cache_size);
+    munmap(random_data, cache_size);
+
 
     return 0;
 } 
@@ -309,7 +313,10 @@ int main() {
     for (i = 0; i < num_caches; i++) {
         if (info[i].cache_type == 1 || info[i].cache_type == 3) {
             memset(latencies, 0, sizeof(latencies));
-            test_cache(attempts, info[i].cache_total_size * 4, latencies, sizeof(latencies) / sizeof(*latencies));
+            if (info[i].cache_level == 1)
+                test_l1_cache(attempts, info[i].cache_total_size, latencies, sizeof(latencies) / sizeof(*latencies));
+            else
+                continue;
         } else {
             continue;
         }
