@@ -189,31 +189,37 @@ int i386_cpuid_caches (struct cache_info *info, size_t info_size) {
 }
 
 int test_l1_cache(size_t attempts, size_t cache_size, int * latencies, size_t max_latency) {
-    char * random_data = mmap(
-          NULL
-        , cache_size
-        , PROT_READ | PROT_WRITE
-        , MAP_PRIVATE | MAP_ANON // | MAP_POPULATE
-        , -1
-        , 0
-        ); // get some random data
-    if (random_data == MAP_FAILED) {
-        perror("mmap");
-        abort();
+    uint64_t * random_data;
+    //random_data = mmap(
+    //      NULL
+    //    , cache_size
+    //    , PROT_READ | PROT_WRITE
+    //    , MAP_PRIVATE | MAP_ANON // | MAP_POPULATE
+    //    , -1
+    //    , 0
+    //    ); // get some random data
+    //if (random_data == MAP_FAILED) {
+    //    perror("mmap");
+    //    abort();
+    //}
+    int e = posix_memalign((void **)&random_data, sysconf(_SC_PAGESIZE), cache_size);
+    if (e != 0) {
+        perror("failed to allocate memory:");
+        exit(1);
     }
 
     sleep(1);
 
     // bring in L1
     size_t i;
-    for (i = 0; i < cache_size; i += 1) {
+    for (i = 0; i < cache_size / sizeof(random_data[0]); i += 1) {
         random_data[i] = 1;
     }
 
     int64_t random_offset = 0;
     random_offset += rand();
     random_offset %= cache_size;
-    char *loc = random_data + random_offset;
+    uint64_t *loc = random_data + random_offset;
     while (attempts--) {
         int32_t temp1, temp2;
         uint64_t cycles_used, edx, eax;
@@ -241,24 +247,19 @@ int test_l1_cache(size_t attempts, size_t cache_size, int * latencies, size_t ma
             latencies[max_latency - 1]++;
     }
 
-    munmap(random_data, cache_size);
+    //munmap(random_data, cache_size);
+    free(random_data);
 
 
     return 0;
 } 
 
 int test_l2l3_cache(size_t attempts, size_t cache_size, int * latencies, size_t max_latency) {
-    char * random_data = mmap(
-          NULL
-        , cache_size
-        , PROT_READ | PROT_WRITE
-        , MAP_PRIVATE | MAP_ANON // | MAP_POPULATE
-        , -1
-        , 0
-        ); // get some random data
-    if (random_data == MAP_FAILED) {
-        perror("mmap");
-        abort();
+    uint64_t * random_data;
+    int e = posix_memalign((void **)&random_data, sysconf(_SC_PAGESIZE), cache_size);
+    if (e != 0) {
+        perror("failed to allocate memory:");
+        exit(1);
     }
 
     sleep(1);
@@ -267,14 +268,14 @@ int test_l2l3_cache(size_t attempts, size_t cache_size, int * latencies, size_t 
     // all data is in l2 now
     // last l1_cache_size bytes of data are in l1
     // first byte is in l2
-    for (i = 0; i < cache_size; i += 1) {
+    for (i = 0; i < cache_size / sizeof(random_data[0]); i += 1) {
         random_data[i] = 1;
     }
 
     while (attempts--) {
         // attempts is so small as compared to cache sizes that we are
         // reading from l2l3
-        char *loc = random_data + attempts;
+        uint64_t *loc = random_data + attempts;
         int32_t temp1, temp2;
         uint64_t cycles_used, edx, eax;
         asm (
@@ -301,7 +302,8 @@ int test_l2l3_cache(size_t attempts, size_t cache_size, int * latencies, size_t 
             latencies[max_latency - 1]++;
     }
 
-    munmap(random_data, cache_size);
+    //munmap(random_data, cache_size);
+    free(random_data);
 
 
     return 0;
