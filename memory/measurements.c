@@ -6,14 +6,77 @@
 #include <string.h>
 #include <sys/mman.h>
 
+// version 1: from http://stackoverflow.com/questions/21369381/measuring-cache-latencies
+//            fails with segmatation fault
+// version 2: add text from intel manual for quick verification of code
 
 int i386_cpuid_caches (size_t * data_caches) {
     int i;
     int num_data_caches = 0;
     for (i = 0; i < 32; i++) {
 
+        //04H NOTES:
+        //    Leaf 04H output depends on the initial value in ECX.*
+        //    See also: “INPUT EAX = 04H: Returns Deterministic Cache Parameters for Each Level” on page 213.
+        //EAX Bits 04 - 00: Cache Type Field.
+        //    0 = Null - No more caches.
+        //    1 = Data Cache.
+        //    2 = Instruction Cache.
+        //    3 = Unified Cache.
+        //    4-31 = Reserved.
+        //    Bits 07 - 05: Cache Level (starts at 1).
+        //    Bit 08: Self Initializing cache level (does not need SW initialization).
+        //    Bit 09: Fully Associative cache.
+        //    Bits 13 - 10: Reserved.
+        //    Bits 25 - 14: Maximum number of addressable IDs for logical processors sharing this cache**, ***.
+        //    Bits 31 - 26: Maximum number of addressable IDs for processor cores in the physical
+        //    package**, ****, *****.
+        //EBX Bits 11 - 00: L = System Coherency Line Size**.
+        //    Bits 21 - 12: P = Physical Line partitions**.
+        //    Bits 31 - 22: W = Ways of associativity**.
+        //ECX Bits 31-00: S = Number of Sets**.
+        //EDX Bit 00: Write-Back Invalidate/Invalidate.
+        //    0 = WBINVD/INVD from threads sharing this cache acts upon lower level caches for threads sharing this
+        //    cache.
+        //    1 = WBINVD/INVD is not guaranteed to act upon lower level caches of non-originating threads sharing
+        //    this cache.
+        //    Bit 01: Cache Inclusiveness.
+        //    0 = Cache is not inclusive of lower cache levels.
+        //    1 = Cache is inclusive of lower cache levels.
+        //    Bit 02: Complex Cache Indexing.
+        //    0 = Direct mapped cache.
+        //    1 = A complex function is used to index the cache, potentially using all address bits.
+        //    Bits 31 - 03: Reserved = 0.
+        //NOTES:
+        //* If ECX contains an invalid sub leaf index, EAX/EBX/ECX/EDX return 0. Sub-leaf index n+1 is invalid if subleaf
+        //* n returns EAX[4:0] as 0.
+        //* ** Add one to the return value to get the result.
+        //* ***The nearest power-of-2 integer that is not smaller than (1 + EAX[25:14]) is the number of unique initial
+        //* APIC IDs reserved for addressing different logical processors sharing this cache.
+        //* **** The nearest power-of-2 integer that is not smaller than (1 + EAX[31:26]) is the number of unique
+        //* Core_IDs reserved for addressing different processor cores in a physical package. Core ID is a subset of
+        //* bits of the initial APIC ID.
+        //* ***** The returned value is constant for valid initial values in ECX. Valid ECX values start from 0.
+
+        //INPUT EAX = 04H: Returns Deterministic Cache Parameters for Each Level
+        //    When CPUID executes with EAX set to 04H and ECX contains an index value, the processor returns encoded data
+        //    that describe a set of deterministic cache parameters (for the cache level associated with the input in ECX). Valid
+        //    index values start from 0.
+        //    Software can enumerate the deterministic cache parameters for each level of the cache hierarchy starting with an
+        //    index value of 0, until the parameters report the value associated with the cache type field is 0. The architecturally
+        //    defined fields reported by deterministic cache parameters are documented in Table 3-8.
+        //    This Cache Size in Bytes
+        //    = (Ways + 1) * (Partitions + 1) * (Line_Size + 1) * (Sets + 1)
+        //    = (EBX[31:22] + 1) * (EBX[21:12] + 1) * (EBX[11:0] + 1) * (ECX + 1)
+        //    The CPUID leaf 04H also reports data that can be used to derive the topology of processor cores in a physical
+        //    package. This information is constant for all valid index values. Software can query the raw data reported by
+        //    executing CPUID with EAX=04H and ECX=0 and use it as part of the topology enumeration algorithm described in
+        //    Chapter 8, “Multiple-Processor Management,” in the Intel® 64 and IA-32 Architectures Software Developer’s
+        //    Manual, Volume 3A.
+
+
         // Variables to hold the contents of the 4 i386 legacy registers
-        uint32_t eax, ebx, ecx, edx; 
+        uint32_t eax, ebx, ecx, edx;
 
         eax = 4; // get cache info
         ecx = i; // cache id
@@ -221,3 +284,5 @@ int main() {
     }
 
     return 0;
+
+}
