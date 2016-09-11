@@ -29,6 +29,7 @@
 *.hex
 clk_precision
 tsc_precision
+mem_measurements
 
 # Debug files
 *.dSYM/
