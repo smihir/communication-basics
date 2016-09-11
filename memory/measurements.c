@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -5,15 +6,40 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sched.h>
 
 // version 1: from http://stackoverflow.com/questions/21369381/measuring-cache-latencies
 //            fails with segmatation fault
 // version 2: add text from intel manual for quick verification of code
 
-int i386_cpuid_caches (size_t * data_caches) {
+
+struct cache_info {
+    int cache_type;
+    int cache_level;
+    int cache_sets;
+    int cache_coherency_line_size;
+    int cache_physical_line_partitions;
+    int cache_ways_of_associativity;
+    int cache_total_size;
+    int cache_is_fully_associative;
+    int cache_is_self_initializing;
+};
+
+void set_affinity(int cpuid) {
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    CPU_SET(cpuid, &set);
+
+    if (sched_setaffinity(getpid(), sizeof(set), &set) == -1)
+        perror("sched_affinity");
+}
+
+int i386_cpuid_caches (struct cache_info *info, size_t info_size) {
     int i;
-    int num_data_caches = 0;
-    for (i = 0; i < 32; i++) {
+    int num_caches = 0;
+    struct cache_info *cinfo;
+    for (i = 0; i < info_size; i++) {
+        cinfo = &info[i];
 
         //04H NOTES:
         //    Leaf 04H output depends on the initial value in ECX.*
@@ -119,9 +145,10 @@ int i386_cpuid_caches (size_t * data_caches) {
         // Total cache size is the product
         size_t cache_total_size = cache_ways_of_associativity * cache_physical_line_partitions * cache_coherency_line_size * cache_sets;
 
-        if (cache_type == 1 || cache_type == 3) {
-            data_caches[num_data_caches++] = cache_total_size;
-        }
+        //if (cache_type == 1 || cache_type == 3) {
+        //    data_caches[num_data_caches++] = cache_total_size;
+        //}
+        num_caches++;
 
         printf(
             "Cache ID %d:\n"
@@ -146,9 +173,19 @@ int i386_cpuid_caches (size_t * data_caches) {
             , cache_is_fully_associative ? "true" : "false"
             , cache_is_self_initializing ? "true" : "false"
         );
+
+        cinfo->cache_type = cache_type;
+        cinfo->cache_level = cache_level;
+        cinfo->cache_sets = cache_sets;
+        cinfo->cache_coherency_line_size = cache_coherency_line_size;
+        cinfo->cache_physical_line_partitions = cache_physical_line_partitions;
+        cinfo->cache_ways_of_associativity = cache_ways_of_associativity;
+        cinfo->cache_total_size = cache_total_size;
+        cinfo->cache_is_fully_associative = cache_is_fully_associative;
+        cinfo->cache_is_self_initializing = cache_is_self_initializing;
     }
 
-    return num_data_caches;
+    return num_caches;
 }
 
 int test_cache(size_t attempts, size_t lower_cache_size, int * latencies, size_t max_latency) {
@@ -182,7 +219,8 @@ int test_cache(size_t attempts, size_t lower_cache_size, int * latencies, size_t
         random_offset += rand();
         random_offset %= lower_cache_size;
         char *loc = random_data + random_offset;
-        int32_t cycles_used, edx, temp1, temp2;
+        int32_t temp1, temp2;
+        uint64_t cycles_used, edx, eax;
         asm (
             "mfence\n\t"        // memory fence
             "rdtsc\n\t"         // get cpu cycle count
@@ -192,14 +230,15 @@ int test_cache(size_t attempts, size_t lower_cache_size, int * latencies, size_t
             "mov %4, %%al\n\t"  // load data
             "mfence\n\t"
             "rdtsc\n\t"
-            "sub %2, %%edx\n\t" // substract cycle count
-            "sbb %3, %%eax"     // substract cycle count
-            : "=a" (cycles_used)
+            "sub %3, %%eax\n\t" // substract cycle count
+            "sbb %2, %%edx"     // substract cycle count
+            : "=a" (eax)
             , "=d" (edx)
             , "=r" (temp1)
             , "=r" (temp2)
             : "m" (loc)
             );
+        cycles_used = edx << 32 | eax;
         if (cycles_used < max_latency)
             latencies[cycles_used]++;
         else 
@@ -212,8 +251,8 @@ int test_cache(size_t attempts, size_t lower_cache_size, int * latencies, size_t
 } 
 
 int main() {
-    size_t cache_sizes[32];
-    int num_data_caches = i386_cpuid_caches(cache_sizes);
+    struct cache_info info[32];
+    int num_caches = i386_cpuid_caches(info, sizeof(info));
 
     int latencies[0x400];
     memset(latencies, 0, sizeof(latencies));
@@ -222,11 +261,13 @@ int main() {
 
     int i;
     int attempts = 1000000;
+    set_affinity(0);
     for (i = 0; i < attempts; i++) { // measure how much overhead we have for counting cyscles
-        int32_t cycles_used, edx, temp1, temp2;
+        int32_t temp1, temp2;
+        uint64_t cycles_used, edx, eax;
         asm (
             "mfence\n\t"        // memory fence
-            "rdtsc\n\t"         // get cpu cycle count
+            "rdtscp\n\t"         // get cpu cycle count
             "mov %%edx, %2\n\t"
             "mov %%eax, %3\n\t"
             "mfence\n\t"        // memory fence
@@ -234,12 +275,13 @@ int main() {
             "rdtsc\n\t"
             "sub %3, %%eax\n\t" // substract cycle count
             "sbb %2, %%edx"     // substract cycle count
-            : "=a" (cycles_used)
+            : "=a" (eax)
             , "=d" (edx)
             , "=r" (temp1)
             , "=r" (temp2)
             :
             );
+        cycles_used = edx << 32 | eax;
         if (cycles_used < sizeof(latencies) / sizeof(*latencies))
             latencies[cycles_used]++;
         else 
@@ -264,8 +306,13 @@ int main() {
         }
     }
 
-    for (i = 0; i < num_data_caches; i++) {
-        test_cache(attempts, cache_sizes[i] * 4, latencies, sizeof(latencies) / sizeof(*latencies));
+    for (i = 0; i < num_caches; i++) {
+        if (info[i].cache_type == 1 || info[i].cache_type == 3) {
+            memset(latencies, 0, sizeof(latencies));
+            test_cache(attempts, info[i].cache_total_size * 4, latencies, sizeof(latencies) / sizeof(*latencies));
+        } else {
+            continue;
+        }
 
         int j;
         size_t sum = 0;

@@ -22,4 +22,4 @@ cscope:
 
 .PHONY: clean
 clean:
-	rm -rf *.o clk_precision tsc_precision
+	rm -rf *.o mem_measurements
