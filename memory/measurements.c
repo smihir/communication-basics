@@ -181,6 +181,7 @@ int test_cache(size_t attempts, size_t lower_cache_size, int * latencies, size_t
         // use processor clock timer for exact measurement
         random_offset += rand();
         random_offset %= lower_cache_size;
+        char *loc = random_data + random_offset;
         int32_t cycles_used, edx, temp1, temp2;
         asm (
             "mfence\n\t"        // memory fence
@@ -197,9 +198,8 @@ int test_cache(size_t attempts, size_t lower_cache_size, int * latencies, size_t
             , "=d" (edx)
             , "=r" (temp1)
             , "=r" (temp2)
-            : "m" (random_data[random_offset])
+            : "m" (loc)
             );
-        // printf("%d\n", cycles_used);
         if (cycles_used < max_latency)
             latencies[cycles_used]++;
         else 
@@ -232,8 +232,8 @@ int main() {
             "mfence\n\t"        // memory fence
             "mfence\n\t"
             "rdtsc\n\t"
-            "sub %2, %%edx\n\t" // substract cycle count
-            "sbb %3, %%eax"     // substract cycle count
+            "sub %3, %%eax\n\t" // substract cycle count
+            "sbb %2, %%edx"     // substract cycle count
             : "=a" (cycles_used)
             , "=d" (edx)
             , "=r" (temp1)
