@@ -30,6 +30,8 @@
 clk_precision
 tsc_precision
 mem_measurements
+cache_info
+l1_lat_rd
 
 # Debug files
 *.dSYM/
