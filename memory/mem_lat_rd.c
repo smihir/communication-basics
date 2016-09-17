@@ -18,7 +18,15 @@
 #define FIVEONETWO TWOFIFTYSIX TWOFIFTYSIX 
 #define KILO FIVEONETWO FIVEONETWO
 
-#define RUNS 1024 * 4
+#define K2 KILO KILO
+#define K4 K2 K2
+#define K8 K4 K4
+#define K16 K8 K8
+#define K32 K16 K16
+#define K64 K32 K32
+#define K128 K64 K64
+
+#define RUNS 1024 * 128
 
 // on 64-bit machines, addr lenght is 64bits, which is 8 bytes
 // so STRIDE should not be less than 8bytes. Ever.
@@ -69,14 +77,12 @@ void calculate_latency(uint64_t *timetsc, size_t len) {
 
 int main(int argc, char **argv) {
     register int iterations = ITERATIONS;
-    //int warmup = WARMUP;
     int e;
     char *ll, *addr;
     struct timespec time1, time2;
     uint64_t timetsc[ITERATIONS];
     register char **p;
     register int i;
-    //register int count = (POOL / (STRIDE * 128)) + 1;
 
     set_affinity(0);
 
@@ -96,30 +102,10 @@ int main(int argc, char **argv) {
     sleep(1);
     p = (char **)&addr[0];
 
-    //while (warmup-- > 0) {
-    //    for (i = 0; i < count; i++) {
-    //        ONETWENTYEIGHT;
-    //    }
-    //}
-
-    //// now that everything is in l2, load first 32KB in l1
-    //// STRIDE is 64b=8Bytes to put in 32KB l1 we need atleast
-    //// 32 * 1024 / 8 = 4096 movs
-    //p = (char **)&addr[0];
-    //KILO;
-    //KILO;
-    //KILO;
-    //KILO;
-    //KILO;
-
     while (iterations-- > 0) {
-        // invalidate cache!!
         clock_gettime(CLOCK_REALTIME, &time1);
 
-        KILO;
-        KILO;
-        KILO;
-        KILO;
+        K128;
 
         clock_gettime(CLOCK_REALTIME, &time2);
         timetsc[ITERATIONS - 1 - iterations] = timediff(&time1, &time2);
