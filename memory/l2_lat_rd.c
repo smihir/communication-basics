@@ -18,7 +18,15 @@
 #define FIVEONETWO TWOFIFTYSIX TWOFIFTYSIX 
 #define KILO FIVEONETWO FIVEONETWO
 
-#define RUNS 1024 * 4
+#define K2 KILO KILO
+#define K4 K2 K2
+#define K8 K4 K4
+#define K16 K8 K8
+#define K32 K16 K16
+#define K64 K32 K32
+#define K128 K64 K64
+
+#define RUNS 1024 * 128
 
 // on 64-bit machines, addr lenght is 64bits, which is 8 bytes
 // so STRIDE should not be less than 8bytes. Ever.
@@ -117,10 +125,7 @@ int main(int argc, char **argv) {
     while (iterations-- > 0) {
         clock_gettime(CLOCK_REALTIME, &time1);
 
-        KILO;
-        KILO;
-        KILO;
-        KILO;
+        K128;
 
         clock_gettime(CLOCK_REALTIME, &time2);
         timetsc[ITERATIONS - 1 - iterations] = timediff(&time1, &time2);
