@@ -13,7 +13,7 @@ ifeq ($(DEBUG), y)
 endif
 
 .PHONY: all
-all: mem_measurements cache_info l1_lat_rd l2_lat_rd mem_lat_rd
+all: cache_info l1_lat_rd l2_lat_rd mem_lat_rd
 
 mem_measurements: $(MEMOBJS)
 	$(CC) $(CFLAGS) $(MEMOBJS) -o $@ $(LDFLAGS)
