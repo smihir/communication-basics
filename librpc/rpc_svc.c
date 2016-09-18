@@ -12,9 +12,17 @@
 #include <pthread.h>
 #include <sys/errno.h>
 #include <sys/time.h>
+#include <signal.h>
 
 #include "rpc_svc.h"
 #include "rpc_log.h"
+
+int num_dropped = 0, num_recv = 0;
+
+void printStats(int signum) {
+    printf("packets received %d, packets dropped %d\n", num_recv, num_dropped);
+    exit(0);
+}
 
 struct service * svc_create(char *port) {
     struct addrinfo hints, *res = NULL;
@@ -71,6 +79,7 @@ struct service * svc_create(char *port) {
 
     svc->sockfd = socketfd;
     freeaddrinfo(res);
+    signal(SIGINT, printStats);
     return svc;
 
 error_socket:
@@ -102,11 +111,53 @@ rec:
         perror("recv error");
         goto rec;
     }
-
+    num_recv++;
     ret = sendto(svc->sockfd, svc->buffer, 0,
                     flag, &src_addr, addrlen);
     if(ret == -1) {
         perror("send error");
+    }
+    goto rec;
+
+    return;
+}
+
+void svc_pong_sim_drops(struct service *svc, uint8_t percent_drop) {
+    int flag = 0, ret, pktlen = 0, drop = 0;
+    struct sockaddr src_addr;
+    socklen_t addrlen;
+    uint8_t r;
+
+    if (svc == NULL) {
+        log("client is null");
+        return;
+    }
+    if (percent_drop > 100) {
+        log("setting \%drop to 100 will drop all packets");
+        percent_drop = 100;
+    }
+    srand(time(NULL));
+rec:
+    r = (uint8_t)(rand() % 100);
+    drop = r < percent_drop ? 1 : 0;
+
+    pktlen = recvfrom(svc->sockfd, svc->buffer, svc->buffer_sz, flag,
+                &src_addr, &addrlen);
+    // recv timeout! resend
+    if (pktlen == -1) {
+        perror("recv error");
+        goto rec;
+    }
+    num_recv++;
+
+    if (drop == 0) {
+        ret = sendto(svc->sockfd, svc->buffer, 0,
+                        flag, &src_addr, addrlen);
+        if(ret == -1) {
+            perror("send error");
+        }
+    } else {
+        num_dropped++;
     }
     goto rec;
 

@@ -21,4 +21,6 @@ struct client {
 
 struct client * clnt_create(char *host, char *port, uint32_t timeout_ms);
 void clnt_ping(struct client *clnt, size_t ping_len);
+void clnt_ping_tput(struct client *clnt, size_t ping_len);
+void clnt_ping_latency(struct client *clnt, size_t ping_len, uint64_t num_pkts);
 #endif

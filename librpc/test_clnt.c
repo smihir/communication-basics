@@ -9,8 +9,8 @@
 #include "rpc_clnt.h"
 
 void usage() {
-    printf("test_clnt -s <hostname> -p <port> -n <number of packets> "
-           "-l <len of packet>\n");
+    printf("test_clnt -s <hostname> -p <port> "
+           "-l <len of packet> [-t]\n");
     exit(1);
 }
 
@@ -21,12 +21,13 @@ int main(int argc, char **argv) {
     char *hostname;
     int ch;
     struct client *clnt;
+    int tput = 0, latency = 0;
 
-    if (argc < 9) {
+    if (argc < 7) {
         usage();
     }
 
-    while ((ch = getopt(argc, argv, "s:p:l:n:")) != -1) {
+    while ((ch = getopt(argc, argv, "s:p:l:n:te")) != -1) {
         switch (ch) {
             case 's':
                 hostname = strdup(optarg);
@@ -51,10 +52,18 @@ int main(int argc, char **argv) {
                     usage();
                 }
                 break;
+            case 't':
+                latency = 0;
+                tput = 1;
+                break;
+            case 'e':
+                tput = 0;
+                latency = 1;
+                break;
             case '?':
             default:
                 usage();
-            }
+        }
     }
 
     printf("hostname: %s, port: %lu, numpkts: %lu, "
@@ -65,7 +74,17 @@ int main(int argc, char **argv) {
         printf("client is null\n");
         exit(1);
     }
+
+    if (tput == 1) {
+        clnt_ping_tput(clnt, pktlen);
+        return 0;
+    }
+    if (latency == 1) {
+        clnt_ping_latency(clnt, pktlen, numpkts);
+        return 0;
+    }
+
     while(1)
-        clnt_ping(clnt, 100);
+        clnt_ping(clnt, pktlen);
     return 0;
 }

@@ -9,7 +9,7 @@
 #include "rpc_svc.h"
 
 void usage() {
-    printf("test_svc -p <port>\n");
+    printf("test_svc -p <port> [-d <drop_percent>]\n");
     exit(1);
 }
 
@@ -18,13 +18,21 @@ int main(int argc, char **argv) {
     char *port_str;
     int ch;
     struct service *svc;
+    unsigned long drop_percent = 0;
 
     if (argc < 3) {
         usage();
     }
 
-    while ((ch = getopt(argc, argv, "s:p:l:n:")) != -1) {
+    while ((ch = getopt(argc, argv, "d:p:")) != -1) {
         switch (ch) {
+            case 'd':
+                drop_percent = strtoul(optarg, NULL, 10);
+                if (drop_percent > 100) {
+                    printf("Invalid percent should be between 0 - 100\n");
+                    usage();
+                }
+                break;
             case 'p':
                 port = strtoul(optarg, NULL, 10);
                 if (port <= 1024 || port > 65536) {
@@ -44,6 +52,10 @@ int main(int argc, char **argv) {
         printf("service is null\n");
         exit(1);
     }
-    svc_pong(svc);
+    if (drop_percent == 0)
+        svc_pong(svc);
+    else
+        svc_pong_sim_drops(svc, (uint8_t)drop_percent);
+
     return 0;
 }
