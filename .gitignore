@@ -35,6 +35,8 @@ l1_lat_rd
 l2_lat_rd
 mem_lat_rd
 mb_lat_rd
+test_clnt
+test_svc
 
 # Debug files
 *.dSYM/
