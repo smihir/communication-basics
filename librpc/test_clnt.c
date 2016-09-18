@@ -65,6 +65,7 @@ int main(int argc, char **argv) {
         printf("client is null\n");
         exit(1);
     }
-    clnt_ping(clnt, 100);
+    while(1)
+        clnt_ping(clnt, 100);
     return 0;
 }
