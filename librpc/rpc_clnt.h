@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#define BUFFER_SIZE 10000
+#define BUFFER_SIZE 64 * 1024
 struct client {
     // buffer used for sending packets and
     // receiving acks, may need separate buffer
