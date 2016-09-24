@@ -153,6 +153,11 @@ struct client * clnt_create(char *host, char *port, uint32_t timeout_ms) {
         goto error_socket;
     }
 
+    if (setsockopt(socketfd, SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz)) < 0) {
+        perror("failed to set send buffer");
+        goto error_socket;
+    }
+
     clnt->sockfd = socketfd;
     memcpy(&clnt->svc_addr, (const void *)p->ai_addr, p->ai_addrlen);
     clnt->addrlen = p->ai_addrlen;
