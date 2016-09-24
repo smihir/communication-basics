@@ -10,7 +10,7 @@
 
 void usage() {
     printf("test_clnt -s <hostname> -p <port> "
-           "-l <len of packet> [-t]\n");
+           "-l <len of packet> [-te]\n");
     exit(1);
 }
 
@@ -21,13 +21,13 @@ int main(int argc, char **argv) {
     char *hostname;
     int ch;
     struct client *clnt;
-    int tput = 0, latency = 0;
+    int tput = 0, latency = 0, udp = 0;
 
     if (argc < 7) {
         usage();
     }
 
-    while ((ch = getopt(argc, argv, "s:p:l:n:te")) != -1) {
+    while ((ch = getopt(argc, argv, "s:p:l:n:teu")) != -1) {
         switch (ch) {
             case 's':
                 hostname = strdup(optarg);
@@ -60,6 +60,9 @@ int main(int argc, char **argv) {
                 tput = 0;
                 latency = 1;
                 break;
+            case 'u':
+                udp = 1;
+                break;
             case '?':
             default:
                 usage();
@@ -75,6 +78,10 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
+    if (udp == 1) {
+        clnt_udp_tput(clnt, pktlen);
+        return 0;
+    }
     if (tput == 1) {
         clnt_ping_tput(clnt, pktlen);
         return 0;

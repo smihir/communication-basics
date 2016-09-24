@@ -19,4 +19,5 @@ struct service {
 struct service * svc_create(char *port);
 void svc_pong(struct service *svc);
 void svc_pong_sim_drops(struct service *svc, uint8_t percent_drop);
+void svc_udp(struct service *svc);
 #endif

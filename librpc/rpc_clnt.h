@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#define BUFFER_SIZE 1500
+#define BUFFER_SIZE 10000
 struct client {
     // buffer used for sending packets and
     // receiving acks, may need separate buffer
@@ -23,4 +23,5 @@ struct client * clnt_create(char *host, char *port, uint32_t timeout_ms);
 void clnt_ping(struct client *clnt, size_t ping_len);
 void clnt_ping_tput(struct client *clnt, size_t ping_len);
 void clnt_ping_latency(struct client *clnt, size_t ping_len, uint64_t num_pkts);
+void clnt_udp_tput(struct client *clnt, size_t ping_len);
 #endif

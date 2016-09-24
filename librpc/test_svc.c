@@ -16,7 +16,7 @@ void usage() {
 int main(int argc, char **argv) {
     unsigned long port = UINT_MAX;
     char *port_str;
-    int ch;
+    int ch, udp = 0;
     struct service *svc;
     unsigned long drop_percent = 0;
 
@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
         usage();
     }
 
-    while ((ch = getopt(argc, argv, "d:p:")) != -1) {
+    while ((ch = getopt(argc, argv, "d:p:u")) != -1) {
         switch (ch) {
             case 'd':
                 drop_percent = strtoul(optarg, NULL, 10);
@@ -41,6 +41,9 @@ int main(int argc, char **argv) {
                 }
                 port_str=strdup(optarg);
                 break;
+            case 'u':
+                udp = 1;
+                break;
             case '?':
             default:
                 usage();
@@ -52,6 +55,9 @@ int main(int argc, char **argv) {
         printf("service is null\n");
         exit(1);
     }
+    if (udp == 1)
+        svc_udp(svc);
+
     if (drop_percent == 0)
         svc_pong(svc);
     else

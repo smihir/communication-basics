@@ -163,3 +163,26 @@ rec:
 
     return;
 }
+
+void svc_udp(struct service *svc) {
+    int flag = 0, pktlen = 0;
+    struct sockaddr src_addr;
+    socklen_t addrlen;
+
+    if (svc == NULL) {
+        log("client is null");
+        return;
+    }
+rec:
+    pktlen = recvfrom(svc->sockfd, svc->buffer, svc->buffer_sz, flag,
+                &src_addr, &addrlen);
+    // recv timeout! resend
+    if (pktlen == -1) {
+        perror("recv error");
+        goto rec;
+    }
+    num_recv++;
+    goto rec;
+
+    return;
+}

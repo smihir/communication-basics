@@ -146,11 +146,6 @@ struct client * clnt_create(char *host, char *port, uint32_t timeout_ms) {
         goto error_addrinfo;
     }
 
-    if (setsockopt(socketfd, SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz)) < 0) {
-        perror("failed to set send buffer");
-        goto error_socket;
-    }
-
     tv.tv_sec = 0;
     tv.tv_usec = clnt->rcv_timeout * 1000;
     if (setsockopt(socketfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
@@ -234,6 +229,8 @@ send:
     if(ret == -1) {
         perror("send error");
         return;
+    } else if (ret < ping_len) {
+        log("complete packet not sent!");
     }
 
     num_sent++;
@@ -274,8 +271,10 @@ send:
     else if (num_pkts == num_send_complete)
         return;
 
-    if (retries == 0)
+    if (retries == 0) {
         clock_gettime(CLOCK_MONOTONIC, &time1);
+        clnt->buffer[0] = (char)rand();
+    }
     ret = sendto(clnt->sockfd, clnt->buffer, ping_len,
                     flag, &clnt->svc_addr, clnt->addrlen);
     if (retries == 0)
@@ -301,6 +300,38 @@ send:
     retries = 0;
     num_send_complete++;
 
+    goto send;
+    return;
+}
+
+void clnt_udp_tput(struct client *clnt, size_t ping_len) {
+    int flag = 0, ret;
+    tput = 1;
+    sz = ping_len;
+
+    if (clnt == NULL) {
+        log("client is null");
+        return;
+    }
+
+    if (ping_len > clnt->buffer_sz) {
+        log("packet len is greater than buffer");
+        return;
+    }
+
+    clock_gettime(CLOCK_MONOTONIC, &time1);
+send:
+    ret = sendto(clnt->sockfd, clnt->buffer, ping_len,
+                    flag, &clnt->svc_addr, clnt->addrlen);
+    if(ret == -1) {
+        perror("send error");
+        return;
+    } else if (ret < ping_len) {
+        log("complete packet not sent!");
+    }
+
+    num_sent++;
+    num_send_complete++;
     goto send;
     return;
 }
