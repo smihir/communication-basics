@@ -86,7 +86,6 @@ int main(int argc, char **argv) {
     uint64_t timetsc[ITERATIONS];
     register char **p;
     register int i;
-    register int count = (POOL / (STRIDE * 128)) + 1;
 
     set_affinity(0);
 
@@ -105,11 +104,8 @@ int main(int argc, char **argv) {
 
     p = (char **)&addr[0];
 
-    sleep(1);
     while (warmup-- > 0) {
-        for (i = 0; i < count; i++) {
-            ONETWENTYEIGHT;
-        }
+        K4;
     }
 
     while (iterations-- > 0) {

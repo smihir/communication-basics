@@ -86,7 +86,6 @@ int main(int argc, char **argv) {
     uint64_t timetsc[ITERATIONS];
     register char **p;
     register int i;
-    register int count = (POOL / (STRIDE * 128)) + 1;
 
     set_affinity(0);
 
@@ -107,16 +106,13 @@ int main(int argc, char **argv) {
 
     sleep(1);
     while (warmup-- > 0) {
-        for (i = 0; i < count; i++) {
-            ONETWENTYEIGHT;
-        }
+        K32;
     }
 
     // now that everything is in l2, load first 32KB in l1
     // STRIDE is 64b=8Bytes to put in 32KB l1 we need atleast
     // 32 * 1024 / 8 = 4096 movs
     p = (char **)&addr[0];
-    KILO;
     KILO;
     KILO;
     KILO;
