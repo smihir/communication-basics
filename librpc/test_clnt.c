@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
     printf("hostname: %s, port: %lu, numpkts: %lu, "
            "pktlen: %lu\n", hostname, port,
             numpkts, pktlen);
-    clnt = clnt_create(hostname, port_str, 100);
+    clnt = clnt_create(hostname, port_str, 1);
     if (clnt == NULL) {
         printf("client is null\n");
         exit(1);

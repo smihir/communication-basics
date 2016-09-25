@@ -67,7 +67,7 @@ void print_latencystats(struct timespec *tv1, struct timespec *tv2,
 
     // convert to time in ms (from ns)
     time_sendto = (double)timediff(tv1, tv2) / 1000000;
-    rtt = (double)timediff(tv2, tv3) / 1000000;
+    rtt = (double)timediff(tv1, tv3) / 1000000;
 
     printf("sendto: %f, rtt: %f, retries: %d\n", time_sendto, rtt, retries);
 }
