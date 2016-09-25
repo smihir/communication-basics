@@ -33,10 +33,9 @@
 #define STRIDE 64
 // POOl depends on l2 cache size, our l1 cache is 256KB so we
 // will allocate 128KB pool so that it is always in cache
-#define POOL 256 * 1024
+#define POOL 128 * 1024
 
-#define ITERATIONS 10000
-#define INNERLOOP  10000
+#define ITERATIONS 10
 #define WARMUP 5
 
 static volatile uint64_t dummy;
@@ -57,16 +56,37 @@ uint64_t timediff(struct timespec *time1, struct timespec *time2) {
     return time2ns - time1ns;
 }
 
+uint64_t mean(uint64_t *v, int size) {
+    int i = 0;
+    uint64_t s = 0;
+
+    for (i = 0; i < size; i++) {
+        s += v[i];
+    }
+    return (s/size);
+}
+
+void calculate_latency(uint64_t *timetsc, size_t len) {
+    int i;
+
+    for (i = 0; i < ITERATIONS; i++) {
+        printf("time for %d movs is %lu, "
+               "time per mov %f\n",
+                RUNS, timetsc[i],
+                (double)(timetsc[i]) / (RUNS));
+    }
+}
+
 int main(int argc, char **argv) {
     register int iterations = ITERATIONS;
     int warmup = WARMUP;
     int e;
     char *ll, *addr;
     struct timespec time1, time2;
-    uint64_t timetsc[1];
+    uint64_t timetsc[ITERATIONS];
     register char **p;
     register int i;
-    register uint64_t looptsc;
+    register int count = (POOL / (STRIDE * 128)) + 1;
 
     set_affinity(0);
 
@@ -85,39 +105,36 @@ int main(int argc, char **argv) {
 
     p = (char **)&addr[0];
 
-    clock_gettime(CLOCK_REALTIME, &time1);
-    while (iterations--) {
-        for (i = 0; i < INNERLOOP; i++) {
-        }
-    }
-    clock_gettime(CLOCK_REALTIME, &time2);
-    looptsc = timediff(&time1, &time2);
-
+    sleep(1);
     while (warmup-- > 0) {
-        K32;
+        for (i = 0; i < count; i++) {
+            ONETWENTYEIGHT;
+        }
     }
 
     // now that everything is in l2, load first 32KB in l1
     // STRIDE is 64b=8Bytes to put in 32KB l1 we need atleast
     // 32 * 1024 / 8 = 4096 movs
     p = (char **)&addr[0];
-    K4;
+    KILO;
+    KILO;
+    KILO;
+    KILO;
+    KILO;
 
-    iterations = ITERATIONS;
-    clock_gettime(CLOCK_REALTIME, &time1);
-    while (iterations--) {
-        for (i = 0; i < INNERLOOP; i++) {
-            ONE;
-        }
+    while (iterations-- > 0) {
+        clock_gettime(CLOCK_REALTIME, &time1);
+
+        K128;
+
+        clock_gettime(CLOCK_REALTIME, &time2);
+        timetsc[ITERATIONS - 1 - iterations] = timediff(&time1, &time2);
     }
-    clock_gettime(CLOCK_REALTIME, &time2);
-    timetsc[0] = timediff(&time1, &time2);
-    printf("%f\n", (double)(timetsc[0] - looptsc) / (ITERATIONS * INNERLOOP));
 
     // don't let compile optimize the above ll traversals!
     dummy = (long)*p;
 
     free(ll);
-    //calculate_latency(timetsc, ITERATIONS);
+    calculate_latency(timetsc, ITERATIONS);
     return 0;
 }
