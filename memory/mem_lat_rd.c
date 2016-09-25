@@ -30,7 +30,7 @@
 
 // on 64-bit machines, addr lenght is 64bits, which is 8 bytes
 // so STRIDE should not be less than 8bytes. Ever.
-#define STRIDE 64
+#define STRIDE 1024
 #define POOL 20 * 1024 * 1024
 
 #define ITERATIONS 10
